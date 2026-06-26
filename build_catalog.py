@@ -64,28 +64,39 @@ def _skin_hex(depth, under):
     elif under == "r": r = min(255, r+12); g = max(0, g-5)          # red
     return "#%02x%02x%02x" % (r, g, b)
 
-def shade_color(shade):
+# product types where a numbered/worded shade really means a SKIN DEPTH (so a skin-tone swatch is right)
+COMPLEXION_RE = re.compile(
+    r"פאונדיישן|foundation|קונסילר|concealer|סקין טינט|skin tint|קרם גוון|"
+    r"\bbb\b|\bcc\b|קרם bb|קרם cc|bb cream|cc cream|color correct|קורקטור|"
+    r"פודרה נסתרת|פודרה מקבעת|פודרת hd|hd powder|loose powder|setting powder|face powder", re.I)
+def is_complexion(p):
+    txt = " ".join(str(p.get(k) or "") for k in
+                   ("category_refined", "name_he", "name_en", "excel_description"))
+    return bool(COMPLEXION_RE.search(txt))
+
+def shade_color(shade, complexion=False):
     if not shade:
         return None
     s = shade.lower()
-    sk = next((d for w, d in sorted(DEPTHS, key=lambda x: -len(x[0])) if w in s), None)
-    mnum = re.search(r"(\d+(?:\.\d+)?)", s)
-    mund = re.search(r"\d+(?:\.\d+)?\s*([nwcrgp]{1,2})\b", s)
-    under = mund.group(1)[0] if mund else None
-    sig = []
-    if sk is not None:
-        sig.append(sk)
-    if mnum:
-        n = float(mnum.group(1))
-        if n >= 100:
-            n /= 100.0
-        sig.append(max(.06, min(.95, (n-1)/8.0)) if n <= 10 else .5)
-    if sig:   # skin tone (foundations / concealers / powders)
-        return _skin_hex(sum(sig)/len(sig), under)
-    for w, hx in COLOR_WORDS:   # color cosmetics (lip / blush / eyeshadow)
+    if complexion:   # numbered/worded shade == skin depth → skin-tone swatch
+        sk = next((d for w, d in sorted(DEPTHS, key=lambda x: -len(x[0])) if w in s), None)
+        mnum = re.search(r"(\d+(?:\.\d+)?)", s)
+        mund = re.search(r"\d+(?:\.\d+)?\s*([nwcrgp]{1,2})\b", s)
+        under = mund.group(1)[0] if mund else None
+        sig = []
+        if sk is not None:
+            sig.append(sk)
+        if mnum:
+            n = float(mnum.group(1))
+            if n >= 100:
+                n /= 100.0
+            sig.append(max(.06, min(.95, (n-1)/8.0)) if n <= 10 else .5)
+        if sig:
+            return _skin_hex(sum(sig)/len(sig), under)
+    for w, hx in COLOR_WORDS:   # color cosmetics (lip / blush / eyeshadow) — match by colour NAME only
         if w in s:
             return hx
-    return None
+    return None   # numeric shade with no colour name → no fake dot; UI shows a clean number label
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 KNOW = os.path.join(ROOT, "knowledge")
@@ -304,7 +315,7 @@ def main():
             "usage_ar": p.get("usage_ar") or "",
             "imgs": imgs,
             "badges": badges,
-            "color": shade_color(p.get("shade") or ""),
+            "color": shade_color(p.get("shade") or "", is_complexion(p)),
             "_key": group_key(p, brand),
         })
 
