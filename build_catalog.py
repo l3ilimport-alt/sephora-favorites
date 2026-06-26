@@ -315,7 +315,7 @@ def main():
             "usage_ar": p.get("usage_ar") or "",
             "imgs": imgs,
             "badges": badges,
-            "color": shade_color(p.get("shade") or "", is_complexion(p)),
+            "color": p.get("shade_hex") or shade_color(p.get("shade") or "", is_complexion(p)),
             "_key": group_key(p, brand),
         })
 
