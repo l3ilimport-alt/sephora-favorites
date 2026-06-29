@@ -114,7 +114,18 @@ BRAND_MAP = {
     "Schwarzkopf Professional": "Schwarzkopf", "Maybelline New York": "Maybelline",
     "Amorus USA": "Amorus", "Benefit Cosmetics": "Benefit",
     "Giorgio Armani": "Armani", "Armani Beauty": "Armani",
-    "Charlotte Tilbury Beauty": "Charlotte Tilbury",
+    "Charlotte Tilbury Beauty": "שרלוט טילבורי", "Charlotte Tilbury": "שרלוט טילבורי",
+    "Dior": "דיור", "DIOR": "דיור", "דיור (Dior)": "דיור",
+    "YSL": "ייב סן לורן", "איב סן לורן": "ייב סן לורן", "Yves Saint Laurent": "ייב סן לורן",
+    "M.A.C": "MAC", "Mac": "MAC",
+    "Makeup for ever": "מייק אפ פור אבר", "Make Up For Ever": "מייק אפ פור אבר",
+    "מייקאפ פוראבר": "מייק אפ פור אבר",
+    "ONE/SIZE": "ONE/SIZE", "וואן סייז": "ONE/SIZE", "וואן סайז (ONE/SIZE)": "ONE/SIZE",
+    "Rhode": "Rhode", "RHODE": "Rhode", "רואד": "Rhode", "רואד (RHODE)": "Rhode", "רוד": "Rhode",
+    "Ordinary": "The Ordinary", "The Ordinary": "The Ordinary",
+    "Saie": "SAIE", "סאיי": "SAIE",
+    "SEPHORA": "ספורה", "Sephora Collection": "ספורה",
+    "אוארגלאס": "האורגלאס",
 }
 def norm_brand(b):
     if not b: return "אחר"
@@ -360,6 +371,18 @@ def main():
     groups.sort(key=lambda g: (g["brand"], g["name_he"]))
     for i, g in enumerate(groups): g["gid"] = "g" + str(i)
 
+    barcode_seen = {}
+    dup_barcodes = []
+    for g in groups:
+        for v in g["variants"]:
+            bc = _nbc(v.get("barcode"))
+            if not bc:
+                continue
+            if bc in barcode_seen:
+                dup_barcodes.append((bc, barcode_seen[bc], v["id"]))
+            else:
+                barcode_seen[bc] = v["id"]
+
     og_image = (SITE_URL.rstrip("/") + "/og-image.png") if SITE_URL else "og-image.png"
 
     # ---- חיבור Supabase: מוזרק לדף כ-window.SUPA. ריק → הקטלוג עובד במצב וואטסאפ-טקסט בלבד ----
@@ -389,6 +412,10 @@ def main():
     for g in sorted(multi, key=lambda g: -len(g["variants"]))[:8]:
         print(f"     · {g['name_he'][:42]} ({g['brand']}) — {len(g['variants'])} גוונים")
     print(f"   הוסרו (לא בהזמנה 1): {len(excluded)}")
+    if dup_barcodes:
+        print(f"⚠️  ברקודים כפולים: {len(dup_barcodes)} (משפיע על מלאי/הזמנות לפי sku)")
+        for bc, first_id, second_id in dup_barcodes[:10]:
+            print(f"     · {bc}: {first_id} / {second_id}")
 
 
 TEMPLATE = r"""<!DOCTYPE html>
@@ -610,6 +637,23 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   .grid{grid-template-columns:repeat(2,1fr);gap:11px;padding:0 12px;margin-top:10px}
   .card .nm{font-size:12.5px;min-height:33px}.price{font-size:15.5px}
 }
+.sitefooter{margin-top:40px;padding:26px 18px 28px;background:#1e1633;color:#cfc7e0;border-top:3px solid var(--accent)}
+.sitefooter .fdisc{max-width:1000px;margin:0 auto 20px;text-align:center;font-size:12.5px;color:#b7add0;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 16px}
+.sitefooter .fcols{max-width:1000px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
+.sitefooter h4{font-size:14px;color:#fff;margin-bottom:10px;font-weight:700}
+.sitefooter p{font-size:13px;line-height:1.7;margin:2px 0;color:#cfc7e0}
+.sitefooter a{color:#e9c7ff;text-decoration:none}
+.sitefooter .flink{display:block;background:none;border:none;color:#cfc7e0;font-family:var(--font);font-size:13px;padding:4px 0;cursor:pointer;text-align:start}
+.sitefooter .flink:hover{color:#fff;text-decoration:underline}
+.sitefooter .fwa{display:inline-block;margin-top:8px;background:#25d366;color:#062b13;font-weight:700;font-size:13px;padding:8px 16px;border-radius:30px}
+.sitefooter .fcopy{max-width:1000px;margin:22px auto 0;text-align:center;font-size:12px;color:#8b85a0;border-top:1px solid rgba(255,255,255,.1);padding-top:14px}
+@media(max-width:640px){.sitefooter .fcols{grid-template-columns:1fr;gap:18px;text-align:center}.sitefooter .flink{text-align:center}}
+.policy{padding:8px 26px 26px;line-height:1.75}
+.policy h2{font-family:'Cormorant Garamond',serif;font-size:26px;color:var(--accent-d);margin-bottom:4px}
+.policy .note{font-size:12px;color:var(--muted);background:var(--accent-soft);border-radius:10px;padding:8px 12px;margin:8px 0 16px}
+.policy h3{font-size:15px;color:var(--text);margin:16px 0 4px}
+.policy p,.policy li{font-size:14px;color:var(--text);margin:4px 0}
+.policy ul{padding-inline-start:20px}
 </style>
 </head>
 <body>
@@ -631,7 +675,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <span class="ico">⌕</span>
     <input id="q" type="search" autocomplete="off" placeholder="חיפוש מוצר, מותג או ברקוד…" oninput="onSearch()" onkeydown="acKey(event)">
     <button class="clr" id="clrBtn" type="button" onclick="clearSearch()" aria-label="נקה חיפוש" title="נקה">✕</button>
-    <div class="ac" id="ac"></div>
+    <div class="ac" id="ac" role="listbox"></div>
   </div>
 </div>
 
@@ -650,6 +694,34 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 
 <div class="rescount" id="rescount"></div>
 <main class="grid" id="grid"></main>
+
+<footer class="sitefooter">
+  <div class="fdisc" id="fDisc">מכירה עצמאית של מוצרים מקוריים · אתר זה אינו האתר הרשמי של Sephora ואינו קשור אליו</div>
+  <div class="fcols">
+    <div class="fcol">
+      <h4 id="fBizT">פרטי העסק</h4>
+      <p>שניר שריקי – יבוא ושיווק מותגי שיער וקוסמטיקה</p>
+      <p>עוסק מורשה: 040553562</p>
+      <p>טלפון: <a href="tel:0534555501">053-4555501</a></p>
+      <p>אימייל: <a href="mailto:saphrafavorites@gmail.com">saphrafavorites@gmail.com</a></p>
+      <p id="fVat">המחירים כוללים מע״מ · משלוחים לכל הארץ</p>
+    </div>
+    <div class="fcol">
+      <h4 id="fInfoT">מידע ומדיניות</h4>
+      <button class="flink" onclick="openPolicy('shipping')" id="fShip">משלוחים ואספקה</button>
+      <button class="flink" onclick="openPolicy('returns')" id="fRet">החזרות וביטולים</button>
+      <button class="flink" onclick="openPolicy('terms')" id="fTerms">תקנון</button>
+      <button class="flink" onclick="openPolicy('privacy')" id="fPriv">מדיניות פרטיות</button>
+    </div>
+    <div class="fcol">
+      <h4 id="fOrderT">הזמנות</h4>
+      <p id="fShipFree">משלוח חינם בהזמנה מעל ₪299</p>
+      <p id="fEta">אספקה עד 72 שעות מרגע איסוף ע״י השליח</p>
+      <a class="fwa" href="https://wa.me/972547599923" id="fWa">הזמנה בוואטסאפ</a>
+    </div>
+  </div>
+  <div class="fcopy">© שניר שריקי · Sephora Favorites</div>
+</footer>
 
 <div class="cartbar" id="cartbar">
   <span class="sum" id="cartsum"></span>
@@ -682,8 +754,23 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
   </div>
 </div></div>
 
+<div class="ov" id="policyModal"><div class="sheet"><button class="x" onclick="closeOv('policyModal')">✕</button><div class="policy" id="policyBody"></div></div></div>
+
 <script>
 const GROUPS = /*__GROUPS__*/;
+const BRAND_ALIASES={
+ "Dior":"דיור","DIOR":"דיור","דיור (Dior)":"דיור",
+ "YSL":"ייב סן לורן","איב סן לורן":"ייב סן לורן","Yves Saint Laurent":"ייב סן לורן",
+ "M.A.C":"MAC","Mac":"MAC",
+ "Makeup for ever":"מייק אפ פור אבר","Make Up For Ever":"מייק אפ פור אבר","מייקאפ פוראבר":"מייק אפ פור אבר",
+ "וואן סייז":"ONE/SIZE","וואן סайז (ONE/SIZE)":"ONE/SIZE",
+ "RHODE":"Rhode","רואד":"Rhode","רואד (RHODE)":"Rhode","רוד":"Rhode",
+ "Ordinary":"The Ordinary","Saie":"SAIE","סאיי":"SAIE",
+ "SEPHORA":"ספורה","Sephora Collection":"ספורה","אוארגלאס":"האורגלאס",
+ "Charlotte Tilbury":"שרלוט טילבורי","Charlotte Tilbury Beauty":"שרלוט טילבורי"
+};
+function canonBrand(b){return BRAND_ALIASES[b]||b||'אחר';}
+GROUPS.forEach(g=>{g.brand=canonBrand(g.brand);});
 GROUPS.forEach((g,i)=>{g._i=i; g.minp=Math.min(...g.variants.map(eff)); g._noimg=g.variants.every(v=>!v.imgs||!v.imgs.length);});
 
 /* ===== i18n: UI language toggle (HE / AR). The WhatsApp order text stays Hebrew always. ===== */
@@ -706,7 +793,11 @@ const I18N={
   pay_now:'שלם עכשיו 💳',sold_out:'אזל',sending:'שולח…',err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',
   cart_empty:'העגלה ריקה',subtotal:'סכום ביניים',discount:'הנחה',grand:'סה"כ לתשלום',
   coupon_ok:'✓ קופון הוחל: ',coupon_bad:'קוד קופון לא תקין',off:'הנחה',
-  alert_empty:'העגלה ריקה',alert_fill:'נא למלא שם מלא וטלפון לפני שליחת ההזמנה',other:'العربية'},
+  alert_empty:'העגלה ריקה',alert_fill:'נא למלא שם מלא וטלפון לפני שליחת ההזמנה',other:'العربية',
+  f_disc:'מכירה עצמאית של מוצרים מקוריים · אתר זה אינו האתר הרשמי של Sephora ואינו קשור אליו',
+  f_biz:'פרטי העסק',f_vat:'המחירים כוללים מע״מ · משלוחים לכל הארץ',f_info:'מידע ומדיניות',
+  f_ship:'משלוחים ואספקה',f_ret:'החזרות וביטולים',f_terms:'תקנון',f_priv:'מדיניות פרטיות',
+  f_order:'הזמנות',f_free:'משלוח חינם בהזמנה מעל ₪299',f_eta:'אספקה עד 72 שעות מרגע איסוף ע״י השליח',f_wa:'הזמנה בוואטסאפ'},
  ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',
   sort_default:'الترتيب: موصى به',sort_pa:'السعر: من الأقل للأعلى',sort_pd:'السعر: من الأعلى للأقل',sort_name:'الاسم: أ–ي',
   all:'الكل',all_brands:'كل الماركات',all_prices:'كل الأسعار',
@@ -725,7 +816,11 @@ const I18N={
   pay_now:'ادفع الآن 💳',sold_out:'نفد',sending:'جارٍ الإرسال…',err_order:'حدث خطأ في إنشاء الطلب. حاول مرة أخرى.',
   cart_empty:'السلة فارغة',subtotal:'المجموع الفرعي',discount:'خصم',grand:'الإجمالي للدفع',
   coupon_ok:'✓ تم تطبيق الكوبون: ',coupon_bad:'رمز كوبون غير صالح',off:'خصم',
-  alert_empty:'السلة فارغة',alert_fill:'يرجى تعبئة الاسم الكامل والهاتف قبل إرسال الطلب',other:'עברית'}
+  alert_empty:'السلة فارغة',alert_fill:'يرجى تعبئة الاسم الكامل والهاتف قبل إرسال الطلب',other:'עברית',
+  f_disc:'بيع مستقل لمنتجات أصلية · هذا الموقع ليس الموقع الرسمي لـ Sephora وغير مرتبط به',
+  f_biz:'تفاصيل العمل',f_vat:'الأسعار تشمل الضريبة · توصيل لكل البلاد',f_info:'معلومات وسياسات',
+  f_ship:'الشحن والتوصيل',f_ret:'الإرجاع والإلغاء',f_terms:'شروط الاستخدام',f_priv:'سياسة الخصوصية',
+  f_order:'الطلبات',f_free:'توصيل مجاني للطلبات فوق ₪299',f_eta:'التوصيل خلال 72 ساعة من استلام المندوب للطرد',f_wa:'اطلب عبر واتساب'}
 };
 let LANG=localStorage.getItem('sf_lang')||'he';
 function t(k){return (I18N[LANG]&&I18N[LANG][k]!=null)?I18N[LANG][k]:(I18N.he[k]!=null?I18N.he[k]:k);}
@@ -744,6 +839,9 @@ function applyStatic(){
   setPh('buyer-name',t('full_name'));setPh('buyer-biz',t('biz_name'));setPh('buyer-id',t('biz_id'));
   setPh('buyer-addr',t('ship_addr'));setPh('buyer-phone',t('phone'));setPh('notes',t('notes_ph'));
   setText('sendBtn',t('send_order'));setText('sendHint',t('send_hint'));setText('payBtn',t('pay_now'));
+  setText('fDisc',t('f_disc'));setText('fBizT',t('f_biz'));setText('fVat',t('f_vat'));setText('fInfoT',t('f_info'));
+  setText('fShip',t('f_ship'));setText('fRet',t('f_ret'));setText('fTerms',t('f_terms'));setText('fPriv',t('f_priv'));
+  setText('fOrderT',t('f_order'));setText('fShipFree',t('f_free'));setText('fEta',t('f_eta'));setText('fWa',t('f_wa'));
   var lb=document.getElementById('langBtn');if(lb)lb.textContent=t('other');
 }
 function toggleLang(){LANG=(LANG==='he')?'ar':'he';localStorage.setItem('sf_lang',LANG);applyLang();}
@@ -782,8 +880,8 @@ function aesc(s){return String(s).replace(/"/g,'&quot;')}
 function imgErr(img){img.style.display='none';const ph=document.createElement('div');ph.className='ph';ph.textContent=img.dataset.l||'✦';img.parentNode.appendChild(ph)}
 function selV(g){return g.variants[sel[g.gid]||0]}
 function swPill(v,on,oc){
-  if(v.color)return `<button class="sw ${on?'on':''}" style="background:${v.color}" title="${aesc(v.shade)}" onclick="event.stopPropagation();${oc}"></button>`;
-  return `<button class="sw txt ${on?'on':''}" onclick="event.stopPropagation();${oc}">${esc(v.shade)}</button>`;
+  if(v.color)return `<button class="sw ${on?'on':''}" style="background:${v.color}" title="${aesc(v.shade)}" aria-label="${aesc(v.shade)}" onclick="event.stopPropagation();${oc}"></button>`;
+  return `<button class="sw txt ${on?'on':''}" title="${aesc(v.shade)}" onclick="event.stopPropagation();${oc}">${esc(v.shade)}</button>`;
 }
 
 // ===== nav (rebuildable for language switch) =====
@@ -811,17 +909,41 @@ buildNav();
 function toggleFavOnly(){favOnly=!favOnly;document.getElementById('favchip').classList.toggle('active',favOnly);render()}
 
 // ===== filtering =====
-// build a multilingual search blob per group (HE + EN names/brand + AR category + AR descriptions/features + shades/barcodes)
+const SEARCH_ALIASES=[
+ ['דיאור','דיור dior'],['דיור','דיאור dior'],['dior','דיור דיאור'],
+ ['ysl','ייב סן לורן איב סן לורן yves saint laurent'],['איב סן לורן','ייב סן לורן ysl'],['ייב סן לורן','איב סן לורן ysl'],
+ ['מקאפ','מייקאפ makeup make up'],['מייקאפ','מקאפ makeup make up'],['מייק אפ','מייקאפ makeup'],
+ ['ספורה','sephora'],['sephora','ספורה'],
+ ['שרלוט','charlotte tilbury'],['charlotte','שרלוט טילבורי'],['tilbury','שרלוט טילבורי'],
+ ['רוד','rhode רואד'],['רואד','rhode רוד'],['rhode','רוד רואד'],
+ ['אלף','elf e.l.f אי.אל.אף'],['elf','אי.אל.אף אלף'],['e.l.f','אי.אל.אף אלף']
+];
+function normText(s){
+  s=String(s||'').toLowerCase();
+  if(s.normalize)s=s.normalize('NFKC');
+  return s.replace(/[\u0591-\u05C7\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g,'')
+    .replace(/[׳']/g,'').replace(/[״"]/g,'')
+    .replace(/[-_/.,()|·:;!؟?]+/g,' ')
+    .replace(/\s+/g,' ').trim();
+}
+function expandSearch(s){
+  const n=normText(s); if(!n)return '';
+  let out=' '+n+' ';
+  SEARCH_ALIASES.forEach(([needle,extra])=>{if(out.includes(' '+normText(needle)+' '))out+=normText(extra)+' ';});
+  return out.replace(/\s+/g,' ').trim();
+}
+// build a multilingual search blob per group (HE/EN/AR names, categories, descriptions, features, shades, barcodes)
 function catBoth(type){return (I18N.ar['c_'+type]||'')+' '+(I18N.he['c_'+type]||'');}
 function buildHay(g){
   let s=g.name_he+' '+g.name_en+' '+g.brand+' '+catBoth(g.type);
-  g.variants.forEach(v=>{s+=' '+(v.shade||'')+' '+(v.barcode||'')+' '+(v.desc_ar||'')+' '+((v.features_ar||[]).join(' '));});
-  return s.toLowerCase();
+  g.variants.forEach(v=>{s+=' '+(v.shade||'')+' '+(v.barcode||'')+' '+(v.desc||'')+' '+((v.features||[]).join(' '))+' '+(v.usage||'')+' '+(v.desc_ar||'')+' '+((v.features_ar||[]).join(' '))+' '+(v.usage_ar||'');});
+  return expandSearch(s);
 }
 function matchQ(g,q){
+  q=normText(q);
   if(!q)return true;
   const hay=g._hay||(g._hay=buildHay(g));
-  return hay.includes(q);
+  return hay.includes(q)||q.split(' ').every(term=>hay.includes(term));
 }
 function visible(){
   const q=document.getElementById('q').value.trim().toLowerCase();
@@ -922,7 +1044,7 @@ function buildAC(){
   if(!acList.length){ac.classList.remove('show');return}
   ac.innerHTML=acList.map((g,i)=>{const v=selV(g);
     const im=v.imgs.length?`<img src="${aesc(v.imgs[0])}" onerror="this.style.visibility='hidden'">`:`<span style="width:30px"></span>`;
-    return `<div class="ac-item" data-i="${i}" onmousedown="acPick(${i})"><div class="b">${esc(g.brand)}</div>${im}<span>${esc(g.name_he)}</span></div>`;
+    return `<div class="ac-item" role="option" aria-label="${aesc(g.brand+' - '+g.name_he)}" data-i="${i}" onmousedown="acPick(${i})"><div class="b">${esc(g.brand)}</div>${im}<span>${esc(g.name_he)}</span></div>`;
   }).join('');
   ac.classList.add('show');
 }
@@ -989,6 +1111,7 @@ function toggleFavFromModal(gid){if(FAVS.has(gid))FAVS.delete(gid);else FAVS.add
 const CART={};
 function cartChange(vid,delta){
   const m=VMAP[vid];if(!m)return;
+  if(delta>0&&isSold(m.v))return;
   if(delta>0){
     if(CART[vid])CART[vid].qty++;
     else CART[vid]={vid,name:m.g.name_he+(m.v.shade&&m.g.variants.length>1?' · '+m.v.shade:''),brand:m.g.brand,size:m.v.size,price:eff(m.v),qty:1};
@@ -1000,6 +1123,7 @@ function cartTotals(){let qty=0,sub=0;Object.values(CART).forEach(it=>{qty+=it.q
 function renderCart(){const {qty,sub}=cartTotals();const bar=document.getElementById('cartbar');
   if(qty===0){bar.classList.remove('show');return}bar.classList.add('show');
   document.getElementById('cartsum').innerHTML=`${qty} ${t('cart_items')} · <b>₪${sub}</b>`;}
+function pruneUnavailableCart(){Object.keys(CART).forEach(vid=>{const m=VMAP[vid];if(m&&isSold(m.v))delete CART[vid];});}
 
 const COUPONS={'SEPHORA10':{type:'percent',val:10,label:'10% הנחה'},'FAV20':{type:'fixed',val:20,label:'₪20 הנחה'}};
 let activeCoupon=null;
@@ -1069,11 +1193,11 @@ async function loadStock(){
       if(!data||data.length<page)break;
       from+=page;
     }
-    STOCK_READY=true; render();    // ציור מחדש — מסמן אזל ומסתיר מוצרים שאינם ב-DB
+    STOCK_READY=true; pruneUnavailableCart(); renderCart(); render();    // ציור מחדש — מסמן אזל ומסתיר מוצרים שאינם ב-DB
   }catch(e){console.warn('טעינת מלאי נכשלה:',e);}
 }
 function cartItems(){      // [{sku, qty}] עבור create_order (sku = ברקוד מנורמל, תואם DB)
-  return Object.keys(CART).map(vid=>{const m=VMAP[vid];return {sku:nbc(m&&m.v.barcode),qty:CART[vid].qty};}).filter(it=>it.sku);
+  return Object.keys(CART).map(vid=>{const m=VMAP[vid];return {sku:nbc(m&&m.v.barcode),qty:CART[vid].qty,sold:m&&isSold(m.v)};}).filter(it=>it.sku&&!it.sold).map(({sku,qty})=>({sku,qty}));
 }
 function validateBuyer(){
   if(!Object.keys(CART).length){alert(t('alert_empty'));return false;}
@@ -1122,6 +1246,32 @@ async function payNow(){
 
 function openOv(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden'}
 function closeOv(id){document.getElementById(id).classList.remove('open');document.body.style.overflow=''}
+// ===== store policies (Israeli e-commerce; review with a lawyer) =====
+const PNOTE='<div class="note">מסמך זה הוא תבנית כללית להמחשה ואינו ייעוץ משפטי — מומלץ לאמת מול עו״ד.</div>';
+const POLICIES={
+ shipping:`<h2>משלוחים ואספקה</h2>${PNOTE}
+  <p>ההזמנות נשלחות באמצעות חברת שליחויות (צ׳יטה).</p>
+  <h3>זמן אספקה</h3><p>עד 72 שעות מרגע איסוף החבילה ע״י השליח (בימי עסקים).</p>
+  <h3>דמי משלוח</h3><ul><li><b>משלוח חינם</b> בהזמנה מעל ₪299.</li><li>בהזמנה מתחת ל-₪299 — דמי משלוח כמפורט בעת ההזמנה.</li></ul>
+  <h3>אזורי חלוקה</h3><p>משלוחים לכל הארץ. ייתכנו אזורים מסוימים עם זמן אספקה ארוך יותר.</p>`,
+ returns:`<h2>החזרות וביטולים</h2>${PNOTE}
+  <p>בהתאם לחוק הגנת הצרכן, התשמ״א-1981.</p>
+  <h3>זכות ביטול</h3><p>ניתן לבטל עסקה ולהחזיר מוצר תוך 14 יום ממועד קבלתו.</p>
+  <h3>תנאי ההחזרה</h3><ul><li>המוצר יוחזר חדש, באריזתו המקורית וללא שימוש.</li><li>מטעמי היגיינה, מוצרי קוסמטיקה/טיפוח שנפתחו או נעשה בהם שימוש — ייתכנו הגבלות החזרה בהתאם לחוק.</li><li>יש לצרף חשבונית/אישור רכישה.</li></ul>
+  <h3>אופן ההחזר</h3><p>ליצירת בקשת ביטול/החזרה: טלפון 053-4555501 או אימייל saphrafavorites@gmail.com. ההחזר הכספי יבוצע באמצעי התשלום המקורי בניכוי דמי ביטול כדין (אם חלים).</p>`,
+ terms:`<h2>תקנון האתר</h2>${PNOTE}
+  <h3>כללי</h3><p>האתר מופעל על ידי שניר שריקי – יבוא ושיווק מותגי שיער וקוסמטיקה (עוסק מורשה 040553562) ("העסק"). השימוש באתר ובהזמנה כפוף לתקנון זה.</p>
+  <h3>המוצרים</h3><p>האתר מציע מוצרי קוסמטיקה וטיפוח מקוריים. תמונות המוצרים להמחשה בלבד וייתכנו הבדלי גוון/אריזה. המחירים בשקלים חדשים וכוללים מע״מ.</p>
+  <h3>הזמנות</h3><p>שליחת הזמנה מהווה הצעה לרכישה; העסק רשאי לאשר או לדחות הזמנה, ולעדכן מחירים וזמינות מלאי. ההזמנה תיחשב כמאושרת רק לאחר אישור העסק.</p>
+  <h3>הבהרה מותגית</h3><p>זוהי מכירה עצמאית של מוצרים מקוריים. האתר אינו האתר הרשמי של Sephora ואינו קשור, מטעמו או בשיתוף עם רשת Sephora. כל הסימנים המסחריים שייכים לבעליהם.</p>
+  <h3>אחריות</h3><p>אחריות המוצר היא של היצרן/היבואן בהתאם לדין.</p>`,
+ privacy:`<h2>מדיניות פרטיות</h2>${PNOTE}
+  <h3>איסוף מידע</h3><p>לצורך ביצוע הזמנה ואספקתה נאספים פרטים: שם, טלפון, כתובת ופרטי הזמנה.</p>
+  <h3>שימוש במידע</h3><p>המידע משמש לעיבוד ההזמנה, אספקה, שירות לקוחות ויצירת קשר בנוגע להזמנה.</p>
+  <h3>העברה לצד שלישי</h3><p>המידע אינו נמכר. הוא עשוי להימסר לחברת השליחויות ולספק הסליקה אך ורק לצורך השלמת ההזמנה.</p>
+  <h3>יצירת קשר</h3><p>לעיון, עדכון או מחיקת פרטים: saphrafavorites@gmail.com.</p>`,
+};
+function openPolicy(k){var b=document.getElementById('policyBody');if(b)b.innerHTML=POLICIES[k]||'';openOv('policyModal');}
 document.querySelectorAll('.ov').forEach(ov=>ov.addEventListener('click',e=>{if(e.target===ov)closeOv(ov.id)}));
 document.addEventListener('touchstart',()=>{if(![...document.querySelectorAll('.ov')].some(o=>o.classList.contains('open')))document.body.style.overflow=''},{passive:true});
 

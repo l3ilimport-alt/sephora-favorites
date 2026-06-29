@@ -7,7 +7,7 @@
 #          Personal access tokens → Tokens (classic) → Generate new token,
 #          סמן את התיבה "repo", צור והעתק.)
 # ============================================================
-set -e
+set -euo pipefail
 cd "$(dirname "$0")"   # תיקיית catalog
 
 echo "──────────────────────────────────────────"
@@ -27,6 +27,14 @@ fi
 
 SITE="https://${GH_USER}.github.io/${GH_REPO}"
 
+echo ""
+echo "⚠️  הסקריפט עומד לעדכן קבצים מקומיים, ליצור commit ולדחוף ל-GitHub."
+echo "   לא תימחק תיקיית .git, ולא יתבצע force push אלא אם FORCE_PUSH=1."
+read -r -p "להמשיך? הקלד yes: " CONFIRM
+if [ "$CONFIRM" != "yes" ]; then
+  echo "בוטל."; exit 0
+fi
+
 # --- 1. עדכון כתובת התצוגה המקדימה (og:image) ובנייה מחדש ---
 echo "→ מעדכן כתובת אתר ל-${SITE} ובונה מחדש…"
 python3 - "$SITE" << 'PY'
@@ -39,13 +47,20 @@ open(p, "w", encoding="utf-8").write(s)
 PY
 python3 build_catalog.py
 
-# --- 2. אתחול git נקי (init מחדש בכל פעם — push מהיר ונקי) ---
+# --- 2. הכנת git בלי למחוק היסטוריה מקומית ---
 echo "→ מכין repo מקומי…"
-rm -rf .git
-git init -q
-git checkout -q -b main
-git add index.html images og-image.png build_catalog.py og-template.html
-git -c user.email="catalog@local" -c user.name="catalog" commit -q -m "catalog update $(date +%Y-%m-%d)"
+if [ ! -d .git ]; then
+  git init -q
+fi
+git checkout -q -B main
+git add -- .nojekyll index.html images hero-desktop.jpg hero-mobile.jpg og-image.png \
+  logo.svg favicon.svg build_catalog.py catalog_overrides.json supabase.config.json \
+  og-template.html push_catalog.sh .gitignore
+if git diff --cached --quiet; then
+  echo "→ אין שינויים חדשים ל-commit."
+else
+  git -c user.email="catalog@local" -c user.name="catalog" commit -q -m "catalog update $(date +%Y-%m-%d)"
+fi
 
 # --- 3. יצירת ה-repo ב-GitHub (אם לא קיים) ---
 echo "→ יוצר/מאמת repo ב-GitHub…"
@@ -55,9 +70,20 @@ curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token ${GH_TOKEN}" \
 
 # --- 4. דחיפה ---
 echo "→ דוחף ל-GitHub…"
-git remote remove origin 2>/dev/null || true
-git remote add origin "https://${GH_USER}:${GH_TOKEN}@github.com/${GH_USER}/${GH_REPO}.git"
-git push -f -q origin main
+if git remote get-url origin >/dev/null 2>&1; then
+  git remote set-url origin "https://github.com/${GH_USER}/${GH_REPO}.git"
+else
+  git remote add origin "https://github.com/${GH_USER}/${GH_REPO}.git"
+fi
+PUSH_URL="https://${GH_USER}:${GH_TOKEN}@github.com/${GH_USER}/${GH_REPO}.git"
+if [ "${FORCE_PUSH:-}" = "1" ]; then
+  git push --force-with-lease -q "$PUSH_URL" main
+else
+  if ! git push -q "$PUSH_URL" main; then
+    echo "❌ ה-push נכשל. אם ה-remote שונה בכוונה, הרץ שוב עם FORCE_PUSH=1 כדי להשתמש ב--force-with-lease."
+    exit 1
+  fi
+fi
 
 # --- 5. הפעלת GitHub Pages (branch main, שורש) ---
 echo "→ מפעיל GitHub Pages…"
