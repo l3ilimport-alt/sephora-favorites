@@ -654,6 +654,10 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .policy h3{font-size:15px;color:var(--text);margin:16px 0 4px}
 .policy p,.policy li{font-size:14px;color:var(--text);margin:4px 0}
 .policy ul{padding-inline-start:20px}
+.policybar{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 14px;max-width:640px;margin:8px auto 0}
+.policybar .plink{background:none;border:none;color:var(--muted);font-family:var(--font);font-size:12px;cursor:pointer;padding:1px 0;white-space:nowrap}
+.policybar .plink:hover{color:var(--accent);text-decoration:underline}
+@media(max-width:640px){.policybar{gap:4px 10px}.policybar .plink{font-size:11.5px}}
 </style>
 </head>
 <body>
@@ -676,6 +680,13 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
     <input id="q" type="search" autocomplete="off" placeholder="חיפוש מוצר, מותג או ברקוד…" oninput="onSearch()" onkeydown="acKey(event)">
     <button class="clr" id="clrBtn" type="button" onclick="clearSearch()" aria-label="נקה חיפוש" title="נקה">✕</button>
     <div class="ac" id="ac" role="listbox"></div>
+  </div>
+  <div class="policybar">
+    <button class="plink" onclick="openPolicy('contact')" id="pbBiz">פרטי העסק</button>
+    <button class="plink" onclick="openPolicy('shipping')" id="pbShip">משלוחים</button>
+    <button class="plink" onclick="openPolicy('returns')" id="pbRet">החזרות</button>
+    <button class="plink" onclick="openPolicy('terms')" id="pbTerms">תקנון</button>
+    <button class="plink" onclick="openPolicy('privacy')" id="pbPriv">פרטיות</button>
   </div>
 </div>
 
@@ -797,7 +808,8 @@ const I18N={
   f_disc:'מכירה עצמאית של מוצרים מקוריים · אתר זה אינו האתר הרשמי של Sephora ואינו קשור אליו',
   f_biz:'פרטי העסק',f_vat:'המחירים כוללים מע״מ · משלוחים לכל הארץ',f_info:'מידע ומדיניות',
   f_ship:'משלוחים ואספקה',f_ret:'החזרות וביטולים',f_terms:'תקנון',f_priv:'מדיניות פרטיות',
-  f_order:'הזמנות',f_free:'משלוח חינם בהזמנה מעל ₪299',f_eta:'אספקה עד 72 שעות מרגע איסוף ע״י השליח',f_wa:'הזמנה בוואטסאפ'},
+  f_order:'הזמנות',f_free:'משלוח חינם בהזמנה מעל ₪299',f_eta:'אספקה עד 72 שעות מרגע איסוף ע״י השליח',f_wa:'הזמנה בוואטסאפ',
+  pb_ship:'משלוחים',pb_ret:'החזרות',pb_priv:'פרטיות'},
  ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',
   sort_default:'الترتيب: موصى به',sort_pa:'السعر: من الأقل للأعلى',sort_pd:'السعر: من الأعلى للأقل',sort_name:'الاسم: أ–ي',
   all:'الكل',all_brands:'كل الماركات',all_prices:'كل الأسعار',
@@ -820,7 +832,8 @@ const I18N={
   f_disc:'بيع مستقل لمنتجات أصلية · هذا الموقع ليس الموقع الرسمي لـ Sephora وغير مرتبط به',
   f_biz:'تفاصيل العمل',f_vat:'الأسعار تشمل الضريبة · توصيل لكل البلاد',f_info:'معلومات وسياسات',
   f_ship:'الشحن والتوصيل',f_ret:'الإرجاع والإلغاء',f_terms:'شروط الاستخدام',f_priv:'سياسة الخصوصية',
-  f_order:'الطلبات',f_free:'توصيل مجاني للطلبات فوق ₪299',f_eta:'التوصيل خلال 72 ساعة من استلام المندوب للطرد',f_wa:'اطلب عبر واتساب'}
+  f_order:'الطلبات',f_free:'توصيل مجاني للطلبات فوق ₪299',f_eta:'التوصيل خلال 72 ساعة من استلام المندوب للطرد',f_wa:'اطلب عبر واتساب',
+  pb_ship:'الشحن',pb_ret:'الإرجاع',pb_priv:'الخصوصية'}
 };
 let LANG=localStorage.getItem('sf_lang')||'he';
 function t(k){return (I18N[LANG]&&I18N[LANG][k]!=null)?I18N[LANG][k]:(I18N.he[k]!=null?I18N.he[k]:k);}
@@ -842,6 +855,7 @@ function applyStatic(){
   setText('fDisc',t('f_disc'));setText('fBizT',t('f_biz'));setText('fVat',t('f_vat'));setText('fInfoT',t('f_info'));
   setText('fShip',t('f_ship'));setText('fRet',t('f_ret'));setText('fTerms',t('f_terms'));setText('fPriv',t('f_priv'));
   setText('fOrderT',t('f_order'));setText('fShipFree',t('f_free'));setText('fEta',t('f_eta'));setText('fWa',t('f_wa'));
+  setText('pbBiz',t('f_biz'));setText('pbShip',t('pb_ship'));setText('pbRet',t('pb_ret'));setText('pbTerms',t('f_terms'));setText('pbPriv',t('pb_priv'));
   var lb=document.getElementById('langBtn');if(lb)lb.textContent=t('other');
 }
 function toggleLang(){LANG=(LANG==='he')?'ar':'he';localStorage.setItem('sf_lang',LANG);applyLang();}
@@ -1249,6 +1263,14 @@ function closeOv(id){document.getElementById(id).classList.remove('open');docume
 // ===== store policies (Israeli e-commerce; review with a lawyer) =====
 const PNOTE='<div class="note">מסמך זה הוא תבנית כללית להמחשה ואינו ייעוץ משפטי — מומלץ לאמת מול עו״ד.</div>';
 const POLICIES={
+ contact:`<h2>פרטי העסק ויצירת קשר</h2>
+  <p><b>שניר שריקי</b> – יבוא ושיווק מותגי שיער וקוסמטיקה</p>
+  <p>עוסק מורשה: 040553562</p>
+  <h3>יצירת קשר</h3>
+  <p>טלפון: <a href="tel:0534555501">053-4555501</a></p>
+  <p>אימייל: <a href="mailto:saphrafavorites@gmail.com">saphrafavorites@gmail.com</a></p>
+  <p>הזמנות בוואטסאפ: <a href="https://wa.me/972547599923">054-7599923</a></p>
+  <p>המחירים כוללים מע״מ · משלוחים לכל הארץ · משלוח חינם מעל ₪299</p>`,
  shipping:`<h2>משלוחים ואספקה</h2>${PNOTE}
   <p>ההזמנות נשלחות באמצעות חברת שליחויות (צ׳יטה).</p>
   <h3>זמן אספקה</h3><p>עד 72 שעות מרגע איסוף החבילה ע״י השליח (בימי עסקים).</p>
