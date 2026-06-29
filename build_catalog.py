@@ -258,6 +258,10 @@ def he_base(members):
     cnt = Counter(bases)
     top = cnt.most_common()
     best = sorted(top, key=lambda kv: (-kv[1], len(kv[0])))[0][0]
+    # final cleanup: a leaked shade often leaves a dangling unbalanced "(" + shade fragment
+    if best.count("(") > best.count(")"):
+        best = best[:best.rfind("(")]
+    best = re.sub(r"\s+", " ", best).strip(" –-,()|·")
     return best
 
 def main():
