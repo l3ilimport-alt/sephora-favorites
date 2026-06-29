@@ -1304,7 +1304,7 @@ async function payNow(){
 function openOv(id){document.getElementById(id).classList.add('open');document.body.style.overflow='hidden'}
 function closeOv(id){document.getElementById(id).classList.remove('open');document.body.style.overflow=''}
 // ===== store policies (Israeli e-commerce; review with a lawyer) =====
-const PNOTE='<div class="note">מסמך זה הוא תבנית כללית להמחשה ואינו ייעוץ משפטי — מומלץ לאמת מול עו״ד.</div>';
+const PNOTE='';  /* internal template/lawyer note removed — not customer-facing */
 const POLICIES={
  contact:`<h2>פרטי העסק ויצירת קשר</h2>
   <p><b>שניר שריקי</b> – יבוא ושיווק מותגי שיער וקוסמטיקה</p>
