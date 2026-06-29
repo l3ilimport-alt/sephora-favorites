@@ -541,6 +541,10 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .shrow::-webkit-scrollbar{display:none}
 .sw{flex:0 0 auto;width:19px;height:19px;border-radius:50%;border:1.5px solid var(--border2);cursor:pointer;padding:0;transition:.12s;position:relative}
 .sw.txt{width:auto;height:auto;border-radius:20px;font-size:10.5px;font-weight:600;padding:2px 8px;background:var(--surface);color:var(--muted);max-width:78px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sw.out{opacity:.4}
+.sw.out::after{content:'';position:absolute;inset:-1px;border-radius:inherit;background:linear-gradient(to top left,transparent 45%,#c0392b 45%,#c0392b 55%,transparent 55%);pointer-events:none}
+.sw.txt.out{text-decoration:line-through}.sw.txt.out::after{display:none}
+.instk{color:#15803d;font-weight:700}
 .sw.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);transform:scale(1.06)}
 .sw.txt.on{background:var(--accent-soft);color:var(--accent-d)}
 .nsh{font-size:10.5px;color:var(--accent-l);font-weight:600;align-self:flex-start}
@@ -588,6 +592,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .pd-shades .lbl{font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px}
 .pd-sw{display:flex;gap:7px;flex-wrap:wrap}
 .pd-sw button{font-family:var(--font);font-size:12px;font-weight:600;padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer;transition:.12s}
+.pd-sw button.out{opacity:.5;text-decoration:line-through;border-style:dashed}
 .pd-sw button.on{background:var(--accent);color:#fff;border-color:transparent}
 .pd-sw .dot{display:inline-block;width:13px;height:13px;border-radius:50%;border:1px solid rgba(0,0,0,.12);margin-inline-end:6px;vertical-align:middle}
 .pd h4{font-size:13px;font-weight:700;color:var(--accent-d);margin:16px 0 5px;padding-bottom:5px;border-bottom:1px solid var(--border)}
@@ -802,7 +807,7 @@ GROUPS.forEach((g,i)=>{g._i=i; g.minp=Math.min(...g.variants.map(eff)); g._noimg
 
 /* ===== i18n: UI language toggle (HE / AR). The WhatsApp order text stays Hebrew always. ===== */
 const I18N={
- he:{search_ph:'חיפוש מוצר, מותג או ברקוד…',fav_only:'המועדפים שלי',in_stock:'נמצא במלאי',
+ he:{search_ph:'חיפוש מוצר, מותג או ברקוד…',fav_only:'המועדפים שלי',in_stock:'נמצא במלאי',in_stock_short:'במלאי',
   sort_default:'מיון: מומלץ',sort_pa:'מחיר: מהנמוך לגבוה',sort_pd:'מחיר: מהגבוה לנמוך',sort_name:'שם: א׳–ת׳',
   all:'הכל',all_brands:'כל המותגים',all_prices:'כל המחירים',
   p_u50:'עד ₪50',p_50_100:'₪50–100',p_100_200:'₪100–200',p_200p:'₪200+',
@@ -826,7 +831,7 @@ const I18N={
   f_ship:'משלוחים ואספקה',f_ret:'החזרות וביטולים',f_terms:'תקנון',f_priv:'מדיניות פרטיות',
   f_order:'הזמנות',f_free:'משלוח חינם בהזמנה מעל ₪299',f_eta:'אספקה עד 72 שעות מרגע איסוף ע״י השליח',f_wa:'הזמנה בוואטסאפ',
   pb_ship:'משלוחים',pb_ret:'החזרות',pb_priv:'פרטיות'},
- ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',in_stock:'متوفر',
+ ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',in_stock:'متوفر',in_stock_short:'متوفر',
   sort_default:'الترتيب: موصى به',sort_pa:'السعر: من الأقل للأعلى',sort_pd:'السعر: من الأعلى للأقل',sort_name:'الاسم: أ–ي',
   all:'الكل',all_brands:'كل الماركات',all_prices:'كل الأسعار',
   p_u50:'حتى ₪50',p_50_100:'₪50–100',p_100_200:'₪100–200',p_200p:'₪200+',
@@ -909,10 +914,22 @@ function saveFavs(){localStorage.setItem('sf_favs',JSON.stringify([...FAVS]))}
 function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function aesc(s){return String(s).replace(/"/g,'&quot;')}
 function imgErr(img){img.style.display='none';const ph=document.createElement('div');ph.className='ph';ph.textContent=img.dataset.l||'✦';img.parentNode.appendChild(ph)}
-function selV(g){return g.variants[sel[g.gid]||0]}
+// default displayed variant = first IN-STOCK shade (so the card never defaults to a sold-out shade)
+function defaultV(g){
+  if(STOCK_READY){
+    var f=g.variants.findIndex(function(v){return STOCK[nbc(v.barcode)]>0;});
+    if(f>=0)return f;
+    var d=g.variants.findIndex(inDB);
+    if(d>=0)return d;
+  }
+  return 0;
+}
+function curIdx(g){var s=sel[g.gid];return s!=null?s:defaultV(g);}
+function selV(g){return g.variants[curIdx(g)];}
 function swPill(v,on,oc){
-  if(v.color)return `<button class="sw ${on?'on':''}" style="background:${v.color}" title="${aesc(v.shade)}" aria-label="${aesc(v.shade)}" onclick="event.stopPropagation();${oc}"></button>`;
-  return `<button class="sw txt ${on?'on':''}" title="${aesc(v.shade)}" onclick="event.stopPropagation();${oc}">${esc(v.shade)}</button>`;
+  var so=isSold(v), oc2=so?'out':'', tip=aesc(v.shade)+(so?' — '+t('sold_out'):'');
+  if(v.color)return `<button class="sw ${on?'on':''} ${oc2}" style="background:${v.color}" title="${tip}" aria-label="${tip}" onclick="event.stopPropagation();${oc}"></button>`;
+  return `<button class="sw txt ${on?'on':''} ${oc2}" title="${tip}" onclick="event.stopPropagation();${oc}">${esc(v.shade)}</button>`;
 }
 
 // ===== nav (rebuildable for language switch) =====
@@ -1020,9 +1037,10 @@ function cardHtml(g){
   const img=v.imgs.length?`<img src="${aesc(v.imgs[0])}" loading="lazy" data-l="${aesc(g.name_he[0]||'✦')}" onerror="imgErr(this)">`:`<div class="ph">${esc(g.name_he[0]||'✦')}</div>`;
   let shades='';
   if(g.variants.length>1){
-    const idx=sel[g.gid]||0;
+    const idx=curIdx(g);
     shades=`<div class="shrow" onclick="event.stopPropagation()">${g.variants.map((vv,k)=>swPill(vv,k===idx,`pickV('${g.gid}',${k})`)).join('')}</div>`;
   }
+  const nInStock=STOCK_READY?g.variants.filter(vv=>STOCK[nbc(vv.barcode)]>0).length:0;
   return `<div class="card" id="card-${g.gid}" onclick="openPd(${g._i})">
       <div class="imgbox">
         <button class="fav ${fav}" onclick="event.stopPropagation();toggleFav('${g.gid}',this)">♥</button>
@@ -1031,7 +1049,7 @@ function cardHtml(g){
       <div class="body">
         <div class="brand">${esc(g.brand)}</div>
         <div class="nm">${esc(g.name_he)}</div>
-        ${g.variants.length>1?`<span class="nsh">${g.variants.length} ${t('shades')}</span>`:(v.size?`<div class="meta"><span class="tag">${esc(v.size)}</span></div>`:'')}
+        ${g.variants.length>1?`<span class="nsh">${g.variants.length} ${t('shades')}${(STOCK_READY&&nInStock>0)?` · <b class="instk">${nInStock} ${t('in_stock_short')}</b>`:''}</span>`:(v.size?`<div class="meta"><span class="tag">${esc(v.size)}</span></div>`:'')}
         ${shades}
         <div class="foot">
           ${priceHtml(v)}
@@ -1107,8 +1125,8 @@ function renderPd(g){
   const ing=v.ingredients?`<h4>${t('ingredients')}</h4><p>${esc(v.ingredients)}</p>`:'';
   const use=_usg?`<h4>${t('usage')}</h4><p>${esc(_usg)}</p>`:'';
   let shades='';
-  if(g.variants.length>1){const idx=sel[g.gid]||0;
-    shades=`<div class="pd-shades"><div class="lbl">${t('pick_shade')} (${g.variants.length}):</div><div class="pd-sw">${g.variants.map((vv,k)=>`<button class="${k===idx?'on':''}" onclick="pdPick('${g.gid}',${k})">${vv.color?`<i class="dot" style="background:${vv.color}"></i>`:''}${esc(vv.shade)}</button>`).join('')}</div></div>`;}
+  if(g.variants.length>1){const idx=curIdx(g);
+    shades=`<div class="pd-shades"><div class="lbl">${t('pick_shade')} (${g.variants.length}):</div><div class="pd-sw">${g.variants.map((vv,k)=>`<button class="${k===idx?'on':''} ${isSold(vv)?'out':''}" onclick="pdPick('${g.gid}',${k})">${vv.color?`<i class="dot" style="background:${vv.color}"></i>`:''}${esc(vv.shade)}${isSold(vv)?` · ${t('sold_out')}`:''}</button>`).join('')}</div></div>`;}
   const pr=v.sale&&v.sale>0?`<div class="pr">₪${v.sale}<span class="was">₪${v.price}</span></div>`:`<div class="pr">₪${v.price}</div>`;
   const bdg=(v.badges||[]).map(b=>`<span class="tag" style="color:#fff;background:${b==='sale'?'#e0245e':b==='vegan'?'#16a34a':'var(--accent)'};border:none">${t('b_'+b)||b}</span>`).join('');
   // similar: other groups, same brand first then same type
