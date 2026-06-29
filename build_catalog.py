@@ -329,6 +329,7 @@ def main():
             "desc_ar": p.get("description_ar") or "",
             "features_ar": p.get("features_ar") or [],
             "usage_ar": p.get("usage_ar") or "",
+            "contents": p.get("contents") or [],
             "imgs": imgs,
             "badges": badges,
             "color": p.get("shade_hex") or shade_color(p.get("shade") or "", is_complexion(p)),
@@ -354,6 +355,7 @@ def main():
         if p.get("desc_ar"): d["desc_ar"] = p["desc_ar"]
         if p.get("features_ar"): d["features_ar"] = p["features_ar"]
         if p.get("usage_ar"): d["usage_ar"] = p["usage_ar"]
+        if p.get("contents"): d["contents"] = p["contents"]
         return d
     def make_group(members, base_he):
         members = sorted(members, key=lambda m: (m["shade"] or m["name_he"]))
@@ -659,6 +661,14 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .policy h3{font-size:15px;color:var(--text);margin:16px 0 4px}
 .policy p,.policy li{font-size:14px;color:var(--text);margin:4px 0}
 .policy ul{padding-inline-start:20px}
+.bndl{display:flex;flex-direction:column;gap:7px;margin-top:6px}
+.bndl details{border:1px solid var(--border2);border-radius:12px;background:var(--surface);overflow:hidden}
+.bndl summary{cursor:pointer;padding:11px 14px;font-size:14px;font-weight:500;color:var(--accent-d);list-style:none;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.bndl summary::-webkit-details-marker{display:none}
+.bndl summary::after{content:'+';font-size:18px;color:var(--accent-l);font-weight:400}
+.bndl details[open] summary::after{content:'−'}
+.bndl details[open] summary{border-bottom:1px solid var(--border)}
+.bndl details p{padding:10px 14px 13px;font-size:13.5px;line-height:1.65;color:var(--text);margin:0}
 .policybar{display:flex;flex-wrap:wrap;justify-content:center;gap:5px 14px;max-width:640px;margin:8px auto 0}
 .policybar .plink{background:none;border:none;color:var(--muted);font-family:var(--font);font-size:12px;cursor:pointer;padding:1px 0;white-space:nowrap}
 .policybar .plink:hover{color:var(--accent);text-decoration:underline}
@@ -699,6 +709,7 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 <div class="toolbar" id="prices"></div>
 <div class="toolbar">
   <button class="chip favbtn" id="favchip" onclick="toggleFavOnly()">♥ המועדפים שלי</button>
+  <button class="chip favbtn" id="stockchip" onclick="toggleStockOnly()">📦 נמצא במלאי</button>
   <span class="spacer"></span>
   <select class="sort" id="sort" onchange="render()">
     <option value="default">מיון: מומלץ</option>
@@ -791,7 +802,7 @@ GROUPS.forEach((g,i)=>{g._i=i; g.minp=Math.min(...g.variants.map(eff)); g._noimg
 
 /* ===== i18n: UI language toggle (HE / AR). The WhatsApp order text stays Hebrew always. ===== */
 const I18N={
- he:{search_ph:'חיפוש מוצר, מותג או ברקוד…',fav_only:'המועדפים שלי',
+ he:{search_ph:'חיפוש מוצר, מותג או ברקוד…',fav_only:'המועדפים שלי',in_stock:'נמצא במלאי',
   sort_default:'מיון: מומלץ',sort_pa:'מחיר: מהנמוך לגבוה',sort_pd:'מחיר: מהגבוה לנמוך',sort_name:'שם: א׳–ת׳',
   all:'הכל',all_brands:'כל המותגים',all_prices:'כל המחירים',
   p_u50:'עד ₪50',p_50_100:'₪50–100',p_100_200:'₪100–200',p_200p:'₪200+',
@@ -799,7 +810,7 @@ const I18N={
   view_order:'צפה בהזמנה ←',totop:'חזרה למעלה',
   c_איפור:'איפור',c_טיפוח:'טיפוח',c_שיער:'שיער',c_בושם:'בושם',c_מארזים:'מארזים',c_ציפורניים:'ציפורניים',c_אביזרים:'אביזרים',c_ציוד:'ציוד',c_אחר:'אחר',
   b_sale:'מבצע',b_new:'חדש',b_bestseller:'רב-מכר',b_soldout:'אזל',b_limited:'מהדורה מוגבלת',b_vegan:'טבעוני',
-  shades:'גוונים',feats:'מאפיינים עיקריים',ingredients:'רכיבים',usage:'אופן שימוש',
+  shades:'גוונים',feats:'מאפיינים עיקריים',ingredients:'רכיבים',usage:'אופן שימוש',contents_h:'מה כלול במבחר',
   pick_shade:'בחר גוון',similar:'מוצרים דומים',desc:'תיאור',barcode:'ברקוד:',
   add_order:'הוסף להזמנה',fav_remove:'במועדפים — הסר',fav_add:'הוסף למועדפים',
   my_order:'ההזמנה שלי',coupon_ph:'קוד קופון',apply:'החל',buyer_details:'פרטי המזמין',
@@ -815,7 +826,7 @@ const I18N={
   f_ship:'משלוחים ואספקה',f_ret:'החזרות וביטולים',f_terms:'תקנון',f_priv:'מדיניות פרטיות',
   f_order:'הזמנות',f_free:'משלוח חינם בהזמנה מעל ₪299',f_eta:'אספקה עד 72 שעות מרגע איסוף ע״י השליח',f_wa:'הזמנה בוואטסאפ',
   pb_ship:'משלוחים',pb_ret:'החזרות',pb_priv:'פרטיות'},
- ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',
+ ar:{search_ph:'ابحث عن منتج، ماركة أو باركود…',fav_only:'المفضلة لديّ',in_stock:'متوفر',
   sort_default:'الترتيب: موصى به',sort_pa:'السعر: من الأقل للأعلى',sort_pd:'السعر: من الأعلى للأقل',sort_name:'الاسم: أ–ي',
   all:'الكل',all_brands:'كل الماركات',all_prices:'كل الأسعار',
   p_u50:'حتى ₪50',p_50_100:'₪50–100',p_100_200:'₪100–200',p_200p:'₪200+',
@@ -823,7 +834,7 @@ const I18N={
   view_order:'عرض الطلب ←',totop:'العودة للأعلى',
   c_איפור:'مكياج',c_טיפוח:'العناية بالبشرة',c_שיער:'العناية بالشعر',c_בושם:'عطر',c_מארזים:'مجموعات',c_ציפורניים:'العناية بالأظافر',c_אביזרים:'إكسسوارات',c_ציוד:'معدات',c_אחר:'أخرى',
   b_sale:'تخفيض',b_new:'جديد',b_bestseller:'الأكثر مبيعاً',b_soldout:'نفد',b_limited:'إصدار محدود',b_vegan:'نباتي',
-  shades:'ألوان',feats:'أبرز المزايا',ingredients:'المكوّنات',usage:'طريقة الاستخدام',
+  shades:'ألوان',feats:'أبرز المزايا',ingredients:'المكوّنات',usage:'طريقة الاستخدام',contents_h:'ما الذي تشمله التشكيلة',
   pick_shade:'اختر اللون',similar:'منتجات مشابهة',desc:'الوصف',barcode:'باركود:',
   add_order:'أضف إلى الطلب',fav_remove:'في المفضلة — إزالة',fav_add:'أضف إلى المفضلة',
   my_order:'طلبي',coupon_ph:'رمز الكوبون',apply:'تطبيق',buyer_details:'تفاصيل مقدّم الطلب',
@@ -849,6 +860,7 @@ function applyStatic(){
   document.documentElement.lang=LANG;
   setPh('q',t('search_ph'));
   var fc=document.getElementById('favchip');if(fc)fc.innerHTML='♥ '+t('fav_only');
+  var sc=document.getElementById('stockchip');if(sc)sc.innerHTML='📦 '+t('in_stock');
   var so=document.getElementById('sort');if(so){so.options[0].text=t('sort_default');so.options[1].text=t('sort_pa');so.options[2].text=t('sort_pd');so.options[3].text=t('sort_name');}
   setText('viewOrderBtn',t('view_order'));
   var tt=document.getElementById('toTop');if(tt){tt.title=t('totop');tt.setAttribute('aria-label',t('totop'));}
@@ -880,7 +892,7 @@ const PRESTIGE={
 };
 function prestige(b){return PRESTIGE[b]||4;}
 const VMAP={}; GROUPS.forEach(g=>g.variants.forEach(v=>{VMAP[v.id]={g,v};}));
-function eff(v){return (v.sale&&v.sale>0)?v.sale:v.price}
+function eff(v){var p=STOCK_READY?PRICE[nbc(v.barcode)]:undefined;return (p!=null&&p>0)?p:((v.sale&&v.sale>0)?v.sale:v.price);}
 
 const BADGE_LABEL={sale:'מבצע',new:'חדש',bestseller:'רב-מכר',soldout:'אזל',limited:'מהדורה מוגבלת',vegan:'טבעוני'};
 const BADGE_ORDER=['sale','bestseller','new','limited','soldout','vegan'];
@@ -890,7 +902,7 @@ const BRANDS=(()=>{const c={};GROUPS.forEach(g=>c[g.brand]=(c[g.brand]||0)+1);
   return Object.keys(c).sort((a,b)=>a==='אחר'?1:b==='אחר'?-1:c[b]-c[a]);})();
 const PRICES=[{l:'עד ₪50',mn:0,mx:50},{l:'₪50–100',mn:50,mx:100},{l:'₪100–200',mn:100,mx:200},{l:'₪200+',mn:200,mx:1e9}];
 
-let curCat='__all__',curBrand='__all__',curPrice=-1,favOnly=false;
+let curCat='__all__',curBrand='__all__',curPrice=-1,favOnly=false,inStockOnly=false;
 const sel={};   // gid -> variant index
 const FAVS=new Set(JSON.parse(localStorage.getItem('sf_favs')||'[]'));
 function saveFavs(){localStorage.setItem('sf_favs',JSON.stringify([...FAVS]))}
@@ -926,6 +938,7 @@ function buildNav(){
 }
 buildNav();
 function toggleFavOnly(){favOnly=!favOnly;document.getElementById('favchip').classList.toggle('active',favOnly);render()}
+function toggleStockOnly(){inStockOnly=!inStockOnly;document.getElementById('stockchip').classList.toggle('active',inStockOnly);render()}
 
 // ===== filtering =====
 const SEARCH_ALIASES=[
@@ -971,6 +984,7 @@ function visible(){
     if(curBrand!=='__all__'&&g.brand!==curBrand)return false;
     if(curPrice>=0){const pr=PRICES[curPrice];if(!(g.minp>=pr.mn&&g.minp<pr.mx))return false}
     if(favOnly&&!FAVS.has(g.gid))return false;
+    if(inStockOnly&&STOCK_READY&&!g.variants.some(v=>STOCK[nbc(v.barcode)]>0))return false;   // רק נמצא במלאי
     if(STOCK_READY&&!g.variants.some(inDB))return false;   // הסתרת מוצרים שאינם ב-DB (לא ניתנים להזמנה)
     return matchQ(g,q);
   });
@@ -1089,6 +1103,7 @@ function renderPd(g){
   const _fts=(LANG==='ar'&&v.features_ar&&v.features_ar.length)?v.features_ar:v.features;
   const _usg=(LANG==='ar'&&v.usage_ar)?v.usage_ar:v.usage;
   const feats=(_fts&&_fts.length)?`<h4>${t('feats')}</h4><ul>${_fts.map(f=>`<li>${esc(f)}</li>`).join('')}</ul>`:'';
+  const contents=(v.contents&&v.contents.length)?`<h4>${t('contents_h')}</h4><div class="bndl">${v.contents.map(c=>`<details><summary>${esc(c.n||c.name||'')}</summary><p>${esc(c.d||c.desc||'')}</p></details>`).join('')}</div>`:'';
   const ing=v.ingredients?`<h4>${t('ingredients')}</h4><p>${esc(v.ingredients)}</p>`:'';
   const use=_usg?`<h4>${t('usage')}</h4><p>${esc(_usg)}</p>`:'';
   let shades='';
@@ -1113,6 +1128,7 @@ function renderPd(g){
       ${pr}
       <button class="pdfav ${FAVS.has(g.gid)?'on':''}" id="pdFav" onclick="toggleFavFromModal('${g.gid}')"><span class="h">♥</span><span class="t">${FAVS.has(g.gid)?t('fav_remove'):t('fav_add')}</span></button>
       ${_dsc?`<h4>${t('desc')}</h4><p>${esc(_dsc)}</p>`:''}
+      ${contents}
       ${feats}${ing}${use}
       ${v.barcode?`<div class="barc">${t('barcode')} ${esc(v.barcode)}</div>`:''}
       ${isSold(v)?`<button class="cta" disabled style="opacity:.5;cursor:not-allowed">${t('sold_out')}</button>`
@@ -1196,8 +1212,8 @@ function buildOrderText(orderId){
 /* ===== חיבור Supabase (אופציונלי). ריק → fallback לוואטסאפ-טקסט בלבד ===== */
 const SB=(window.SUPA&&window.SUPA.url&&window.SUPA.anon&&window.supabase)
   ? window.supabase.createClient(window.SUPA.url,window.SUPA.anon) : null;
-const STOCK={};            // ברקוד-מנורמל -> מלאי חי
-let STOCK_READY=false;
+var STOCK={}, PRICE={};    // ברקוד-מנורמל -> מלאי/מחיר חי מה-DB (var=hoisted כדי ש-eff לא יזרוק בטעינה)
+var STOCK_READY=false;
 function nbc(x){return String(x||'').replace(/\D/g,'');}      // ברקוד → ספרות בלבד (תואם sku ב-DB)
 function inDB(v){return STOCK_READY && v && STOCK[nbc(v.barcode)]!==undefined;}   // קיים ב-DB?
 function isSold(v){if(!STOCK_READY)return false;const n=nbc(v&&v.barcode);return STOCK[n]===undefined||STOCK[n]<=0;}  // לא-ב-DB או אזל → לא זמין
@@ -1206,9 +1222,9 @@ async function loadStock(){
   try{
     const page=1000; let from=0;        // עוקף את תקרת 1000 השורות של PostgREST
     for(;;){
-      const {data,error}=await SB.from('products').select('barcode,stock,active').range(from,from+page-1);
+      const {data,error}=await SB.from('products').select('barcode,stock,active,price_x3').range(from,from+page-1);
       if(error)throw error;
-      (data||[]).forEach(p=>{const n=nbc(p.barcode);if(n)STOCK[n]=p.active?p.stock:0;});
+      (data||[]).forEach(p=>{const n=nbc(p.barcode);if(n){STOCK[n]=p.active?p.stock:0;if(p.price_x3!=null)PRICE[n]=Number(p.price_x3);}});
       if(!data||data.length<page)break;
       from+=page;
     }
