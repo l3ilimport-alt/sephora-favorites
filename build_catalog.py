@@ -625,6 +625,8 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .qy{display:flex;align-items:center;border:1px solid var(--border2);border-radius:10px;overflow:hidden}
 .qy button{width:30px;height:30px;border:none;background:var(--accent-soft);color:var(--accent-d);font-size:17px;cursor:pointer;touch-action:manipulation}
 .qy span{min-width:28px;text-align:center;font-size:14px;font-weight:600}
+.qy .qin{width:48px;height:30px;border:none;border-inline:1px solid var(--border2);text-align:center;font-size:14px;font-weight:600;font-family:var(--font);background:#fff;-moz-appearance:textfield}
+.qy .qin::-webkit-outer-spin-button,.qy .qin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .om-row .lt{min-width:62px;text-align:left;font-weight:700;font-size:14px;direction:ltr}
 .om-del{border:none;background:none;color:#c9b8e8;font-size:16px;cursor:pointer}
 .coupon{display:flex;gap:8px;margin:16px 0 6px}
@@ -1198,13 +1200,17 @@ function renderOrder(){
   if(!keys.length){body.innerHTML='<p style="text-align:center;color:var(--muted);padding:20px">'+t('cart_empty')+'</p>';renderTotals();return}
   body.innerHTML=keys.map((k,idx)=>{const it=CART[k];return `<div class="om-row">
     <div class="nm">${esc(it.name)}<small>${esc(it.brand)}${it.size?' · '+esc(it.size):''}</small></div>
-    <div class="qy"><button data-i="${idx}" data-a="dec">−</button><span>${it.qty}</span><button data-i="${idx}" data-a="inc">+</button></div>
+    <div class="qy"><button data-i="${idx}" data-a="dec">−</button><input class="qin" type="number" inputmode="numeric" min="1" data-qi="${idx}" value="${it.qty}"><button data-i="${idx}" data-a="inc">+</button></div>
     <div class="lt">₪${it.qty*it.price}</div>
     <button class="om-del" data-i="${idx}" data-a="del">✕</button></div>`}).join('');
   body.onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const key=window._K[+b.dataset.i];if(!key)return;
     cartChange(key,b.dataset.a==='inc'?1:(b.dataset.a==='dec'?-1:-(CART[key]?CART[key].qty:0)));};
+  body.onchange=e=>{const inp=e.target.closest('[data-qi]');if(!inp)return;const key=window._K[+inp.dataset.qi];if(!key)return;
+    let n=parseInt(inp.value,10);if(isNaN(n)||n<1)n=1;cartSetQty(key,n);};
   renderTotals();
 }
+function cartSetQty(vid,n){const m=VMAP[vid];if(!m||!CART[vid])return;CART[vid].qty=Math.max(1,n);
+  renderCart();updateCard(m.g.gid);if(document.getElementById('orderModal').classList.contains('open'))renderOrder();}
 function renderTotals(){const {sub}=cartTotals();const d=discount(sub);const el=document.getElementById('totals');
   if(!Object.keys(CART).length){el.innerHTML='';return}
   const net=sub-d, vat=Math.round(net*0.18), tot=net+vat;
