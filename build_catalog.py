@@ -827,7 +827,7 @@ const I18N={
   ship_addr:'עיר וכתובת למשלוח',phone:'טלפון *',notes_ph:'הערות להזמנה (אופציונלי)…',
   send_order:'שלח הזמנה לאישור (וואטסאפ)',send_hint:'ההזמנה תיפתח ב-WhatsApp עם מספר ההזמנה',
   pay_now:'שלם עכשיו 💳',sold_out:'אזל',sending:'שולח…',err_order:'אירעה תקלה ביצירת ההזמנה. נסה שוב.',
-  cart_empty:'העגלה ריקה',subtotal:'סכום ביניים',discount:'הנחה',grand:'סה"כ לתשלום',
+  cart_empty:'העגלה ריקה',subtotal:'סכום ביניים',discount:'הנחה',vat:'מע"מ 18%',grand:'סה"כ לתשלום',
   coupon_ok:'✓ קופון הוחל: ',coupon_bad:'קוד קופון לא תקין',off:'הנחה',
   alert_empty:'העגלה ריקה',alert_fill:'נא למלא שם מלא וטלפון לפני שליחת ההזמנה',other:'العربية',
   f_disc:'מכירה עצמאית של מוצרים מקוריים · אתר זה אינו האתר הרשמי של Sephora ואינו קשור אליו',
@@ -851,7 +851,7 @@ const I18N={
   ship_addr:'المدينة والعنوان للتوصيل',phone:'الهاتف *',notes_ph:'ملاحظات على الطلب (اختياري)…',
   send_order:'إرسال الطلب للموافقة (واتساب)',send_hint:'سيُفتح الطلب في WhatsApp مع رقم الطلب',
   pay_now:'ادفع الآن 💳',sold_out:'نفد',sending:'جارٍ الإرسال…',err_order:'حدث خطأ في إنشاء الطلب. حاول مرة أخرى.',
-  cart_empty:'السلة فارغة',subtotal:'المجموع الفرعي',discount:'خصم',grand:'الإجمالي للدفع',
+  cart_empty:'السلة فارغة',subtotal:'المجموع الفرعي',discount:'خصم',vat:'ضريبة 18%',grand:'الإجمالي للدفع',
   coupon_ok:'✓ تم تطبيق الكوبون: ',coupon_bad:'رمز كوبون غير صالح',off:'خصم',
   alert_empty:'السلة فارغة',alert_fill:'يرجى تعبئة الاسم الكامل والهاتف قبل إرسال الطلب',other:'עברית',
   f_disc:'بيع مستقل لمنتجات أصلية · هذا الموقع ليس الموقع الرسمي لـ Sephora وغير مرتبط به',
@@ -1207,9 +1207,11 @@ function renderOrder(){
 }
 function renderTotals(){const {sub}=cartTotals();const d=discount(sub);const el=document.getElementById('totals');
   if(!Object.keys(CART).length){el.innerHTML='';return}
+  const net=sub-d, vat=Math.round(net*0.18), tot=net+vat;
   el.innerHTML=`<div class="l"><span>${t('subtotal')}</span><span>₪${sub}</span></div>
     ${d?`<div class="l" style="color:#15803d"><span>${t('discount')} (${esc(activeCoupon.code)})</span><span>−₪${d}</span></div>`:''}
-    <div class="l grand"><span>${t('grand')}</span><b>₪${sub-d}</b></div>`;}
+    <div class="l"><span>${t('vat')}</span><span>₪${vat}</span></div>
+    <div class="l grand"><span>${t('grand')}</span><b>₪${tot}</b></div>`;}
 
 const WA_NUMBER='972547599923';
 function gv(id){var e=document.getElementById(id);return e?e.value.trim():''}
@@ -1227,8 +1229,10 @@ function buildOrderText(orderId){
   if(addr)msg+=`\nכתובת: ${addr}`;if(phone)msg+=`\nטלפון: ${phone}`;msg+='\n\n';
   let sub=0;keys.forEach(k=>{const it=CART[k];const lt=it.qty*it.price;sub+=lt;
     msg+=`• ${it.name}${it.size?' ('+it.size+')':''} ×${it.qty} = ₪${lt}\n`});
-  const d=discount(sub);if(d)msg+=`\nהנחה (${activeCoupon.code}): −₪${d}`;
-  msg+=`\n*סה"כ: ₪${sub-d}*`;const notes=gv('notes');if(notes)msg+=`\n\nהערות: ${notes}`;return msg;
+  const d=discount(sub);const net=sub-d,vat=Math.round(net*0.18),tot=net+vat;
+  if(d)msg+=`\nהנחה (${activeCoupon.code}): −₪${d}`;
+  msg+=`\nסכום לפני מע"מ: ₪${net}\nמע"מ 18%: ₪${vat}\n*סה"כ כולל מע"מ: ₪${tot}*`;
+  const notes=gv('notes');if(notes)msg+=`\n\nהערות: ${notes}`;return msg;
 }
 
 /* ===== חיבור Supabase (אופציונלי). ריק → fallback לוואטסאפ-טקסט בלבד ===== */
