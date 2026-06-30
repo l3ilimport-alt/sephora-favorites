@@ -6,7 +6,7 @@ Reads knowledge/<id>/product.json, groups shade-variants under one card,
 copies images, and emits catalog/index.html (data inline → works from file://).
 Re-run after adding products to knowledge/ or editing catalog_overrides.json.
 """
-import json, glob, os, shutil, re
+import json, glob, os, shutil, re, sys
 
 # ---- image optimization on copy (keeps the published GitHub Pages site well under the 1GB limit
 #      and makes the catalog load far faster). Downscales to max 720px + recompresses. ----
@@ -265,9 +265,15 @@ def he_base(members):
     return best
 
 def main():
+    # מצב מהיר (--fast או FAST=1): לא מוחק ולא מעבד מחדש תמונות קיימות — רק בונה index.html.
+    # מתאים לשינויי קוד/HTML בלבד. תמונות חדשות עדיין יעובדו (אם חסרות ביעד).
+    fast = ("--fast" in sys.argv) or (os.environ.get("FAST") == "1")
     if os.path.isdir(IMGDIR):
-        shutil.rmtree(IMGDIR)
+        if not fast:
+            shutil.rmtree(IMGDIR)
     os.makedirs(IMGDIR, exist_ok=True)
+    if fast:
+        print("⚡ מצב מהיר: מדלג על עיבוד תמונות קיימות")
 
     overrides = {}
     try:
@@ -305,7 +311,9 @@ def main():
             if files:
                 os.makedirs(os.path.join(IMGDIR, pid), exist_ok=True)
             for f in files:
-                optimize_image(os.path.join(src, f), os.path.join(IMGDIR, pid, f))
+                dst = os.path.join(IMGDIR, pid, f)
+                if not (fast and os.path.exists(dst)):   # מצב מהיר: דלג אם התמונה כבר קיימת
+                    optimize_image(os.path.join(src, f), dst)
                 imgs.append(f"images/{pid}/{f}")
 
         brand = norm_brand(p.get("brand"))
@@ -562,6 +570,8 @@ select.sort{font-family:var(--font);font-size:12px;color:var(--text);background:
 .cardqty button{width:30px;height:34px;border:none;background:var(--accent-soft);color:var(--accent-d);font-size:18px;line-height:1;cursor:pointer;touch-action:manipulation;transition:.12s}
 .cardqty button:hover{background:var(--accent);color:#fff}
 .cardqty span{min-width:28px;text-align:center;font-size:14px;font-weight:700;color:var(--text)}
+.cardqin{width:42px;height:34px;border:none;border-inline:1px solid var(--accent-l);text-align:center;font-size:14px;font-weight:700;color:var(--text);background:var(--surface);font-family:var(--font);-moz-appearance:textfield}
+.cardqin::-webkit-outer-spin-button,.cardqin::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .empty{text-align:center;color:var(--muted);padding:70px 20px;font-size:15px}
 
 /* cart bar + back to top */
@@ -1060,7 +1070,7 @@ function cardHtml(g){
         <div class="foot">
           ${priceHtml(v)}
           ${isSold(v)?`<span class="soldpill">${t('sold_out')}</span>`
-            :qty>0?`<div class="cardqty" onclick="event.stopPropagation()"><button onclick="event.stopPropagation();cartChange('${v.id}',-1)">−</button><span>${qty}</span><button onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button></div>`
+            :qty>0?`<div class="cardqty" onclick="event.stopPropagation()"><button onclick="event.stopPropagation();cartChange('${v.id}',-1)">−</button><input class="cardqin" type="number" inputmode="numeric" min="1" value="${qty}" onclick="event.stopPropagation()" onkeydown="if(event.key==='Enter')this.blur()" onchange="event.stopPropagation();cartSetQty('${v.id}',Math.max(1,parseInt(this.value)||1))"><button onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button></div>`
                  :`<button class="add" onclick="event.stopPropagation();cartChange('${v.id}',1)">+</button>`}
         </div>
       </div>
